@@ -29,9 +29,5 @@ Use the Jenkins Plugin:
 3. Configure your project to use "Deploy AAR to WSO2 Server" as "Post-build Actions"
 4. Fill out the configuration form
 
-This plugin don't undeploy any old versions. If you don't change the version of the WAR in your pom.xml, the WAR is replaced. 
-By changing the version, you may have two WARs running in the application server. If you don't want this, you have to stop or 
-undeploy them manually.
-
 Warning: The plugin will also return "SUCCESS", even if the WSO2 Application Server detects the deployment as faulty. 
 The reason can be an other service with same service name and different AAR file name. 
