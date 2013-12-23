@@ -1,0 +1,6 @@
+<!--
+  This view is used to render the installed plugins page.
+-->
+<div>
+  Publishes AAR files to a WSO2 Server via SOAP administration API.
+</div>
