@@ -37,8 +37,8 @@ public class Wso2AarDeployClient {
 	    JaxWsProxyFactoryBean clientFactory = new JaxWsProxyFactoryBean(); 
         clientFactory.setAddress( serviceUrl+"ServiceUploader.ServiceUploaderHttpsEndpoint/" );
 		clientFactory.setServiceClass( ServiceUploaderPortType.class );
-		clientFactory.setUsername("admin");
-		clientFactory.setPassword("admin");
+		clientFactory.setUsername( adminUser );
+		clientFactory.setPassword( adminPwd );
 		
 		uploadSvc =	(ServiceUploaderPortType) clientFactory.create();
 		
