@@ -1,5 +1,6 @@
 package org.mh.jenkins.wso2;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -48,9 +49,6 @@ public class Wso2AarPublisher extends Recorder {
 		this.aarSource = aarSource.trim();
 		this.aarTargetFileName = aarTargetFileName.trim();
 		this.wso2URL = wso2URL.trim();
-		if ( ! this.wso2URL.endsWith("/") ) {
-			this.wso2URL += "/";
-		}
 		this.wso2AdminUser = wso2AdminUser.trim();
 		this.wso2AdminPwd  = wso2AdminPwd.trim();
 		this.serviceHierarchy = serviceHierarchy.trim();
@@ -82,24 +80,65 @@ public class Wso2AarPublisher extends Recorder {
 		if ( StringUtils.isBlank( aarTargetFileName ) ) {
 			listener.error( "[WSO2 Deployer] AAR file name must be set!" ); 
 			return false;
+		} else {
+			if ( aarTargetFileName.startsWith( "$" ) ) {
+				EnvVars env = build.getEnvironment( listener ); 	
+				String envVar = aarTargetFileName.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] 'AAR Target File Name' from env var: "+envVar );
+				aarTargetFileName = env.get( envVar );
+			}
 		}
 		if ( StringUtils.isBlank( aarSource ) ) {
 			listener.error( "[WSO2 Deployer] AAR source name must be set!" ); 
 			return false;
+		} else {
+			if ( aarSource.startsWith( "$" ) ) {
+				EnvVars env = build.getEnvironment( listener ); 	
+				String envVar = aarSource.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] 'AAR Source' from env var: "+envVar );
+				aarSource = env.get( envVar );
+			}
 		}
 		if ( StringUtils.isBlank( wso2URL ) ) {
 			listener.error( "[WSO2 Deployer] WSO2 server URL must be set!" ); 
 			return false;
+		} else {
+			
+			if ( wso2URL.startsWith( "$" ) ) {
+				EnvVars env = build.getEnvironment( listener ); 	
+				String envVar = wso2URL.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Server URL' from env var: "+envVar );
+		        wso2URL = env.get( envVar );
+			}
+			
+			if ( ! wso2URL.endsWith("/") ) {
+				wso2URL += "/";
+			}
+
 		}
 		// Validates that the organization token is filled in the project configuration.
 		if ( StringUtils.isBlank( wso2AdminUser ) ) {
 			listener.error( "[WSO2 Deployer] Admin user name must be set!" ); 
 			return false;
+		} else {
+			if ( wso2AdminUser.startsWith( "$" ) ) {
+				EnvVars env = build.getEnvironment( listener ); 	
+				String envVar = wso2AdminUser.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Admin User' from env var: "+envVar );
+				wso2AdminUser = env.get( envVar );
+			}
 		}
 		// Validates that the organization token is filled in the project configuration.
 		if ( StringUtils.isBlank( wso2AdminPwd ) ) {
 			listener.error( "[WSO2 Deployer] Admin password must be set!" ); 
 			return false;
+		} else {
+			if ( wso2AdminPwd.startsWith( "$" ) ) {
+				EnvVars env = build.getEnvironment( listener ); 	
+				String envVar = wso2AdminPwd.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Admin Password' from env var: "+envVar );
+				wso2AdminPwd = env.get( envVar );
+			}
 		}
 
 		String version = artifactVersion( build, listener );
@@ -118,7 +157,9 @@ public class Wso2AarPublisher extends Recorder {
 			return false;
 		} else {
 			for ( FilePath aarFile : aarList ) {
+				listener.getLogger().println( "[WSO2 Deployer] WSO2 URL = "+ wso2URL );
 				listener.getLogger().println( "[WSO2 Deployer] AAR is   = "+ aarFile.toURI() );
+				listener.getLogger().println( "[WSO2 Deployer] AAR ver  = "+ version );
 				listener.getLogger().println( "[WSO2 Deployer] AAR size = "+ aarFile.length() );
 
 				InputStream fileIs = aarFile.read();

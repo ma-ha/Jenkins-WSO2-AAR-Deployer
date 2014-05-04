@@ -31,3 +31,12 @@ Use the Jenkins Plugin:
 
 Warning: The plugin will also return "SUCCESS", even if the WSO2 Application Server detects the deployment as faulty. 
 The reason can be an other service with same service name and different AAR file name. 
+
+Jenkins Parameterized Build:
+----------------------------
+You can use build parameters and put them into the plug in form as $ parameters. This is ideal to reduce the number of build of jobs.
+Lets say you have defined the parameter <tt>URL</tt> as build parameter, you can type <tt>$URL</tt> into the 'WSO2 Service URL' field, 
+to tell the plug in to use this parameter as service URL. 
+
+Currently you can either use static strings or a parameter, replacement of sub strings is not possible. 
+Please feel free to implement this, if you need it.

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import javax.net.ssl.TrustManager;
@@ -36,8 +37,9 @@ public class Wso2AarDeployClient {
 	 * @param listener */
 	public Wso2AarDeployClient(  String serviceUrl, String adminUser, String adminPwd, BuildListener listener ) {
 		this.listener = listener;
-		listener.getLogger().println("[WSO2 AAR Deployer] Set up SOAP admin client...");   	
-		
+				
+		listener.getLogger().println("[WSO2 AAR Deployer] Set up SOAP admin client for URL "+serviceUrl+"...");   	
+		        
 		Properties properties = System.getProperties();
 		properties.put( "org.apache.cxf.stax.allowInsecureParser", "1" );
 		System.setProperties( properties ); 
