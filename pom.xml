@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	
 	<artifactId>Jenkins-WSO2-AAR-Deployer</artifactId>
-	<version>0.4</version>
+	<version>0.5</version>
 	<name>WSO2-AAR-Deployer</name>
 
 	<packaging>hpi</packaging>

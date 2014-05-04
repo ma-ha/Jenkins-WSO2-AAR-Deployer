@@ -1,5 +1,8 @@
 package org.mh.jenkins.wso2;
 
+import hudson.model.BuildListener;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -24,16 +27,21 @@ import org.wso2.carbon.aarservices.xsd.ObjectFactory;
 public class Wso2AarDeployClient {
 
 	public ServiceUploaderPortType uploadSvc;
+	private BuildListener listener;
 	
-	/** Constructor sets up the web service proxy client */
-	public Wso2AarDeployClient(  String serviceUrl, String adminUser, String adminPwd ) {
-	    System.out.println("Set up SOAP admin client...");   	
+	/** File read buffer size. */
+    private static final int READ_BUFFER_SIZE = 4096;
+	
+	/** Constructor sets up the web service proxy client 
+	 * @param listener */
+	public Wso2AarDeployClient(  String serviceUrl, String adminUser, String adminPwd, BuildListener listener ) {
+		this.listener = listener;
+		listener.getLogger().println("[WSO2 AAR Deployer] Set up SOAP admin client...");   	
 		
 		Properties properties = System.getProperties();
 		properties.put( "org.apache.cxf.stax.allowInsecureParser", "1" );
 		System.setProperties( properties ); 
 		
-
 	    JaxWsProxyFactoryBean clientFactory = new JaxWsProxyFactoryBean(); 
         clientFactory.setAddress( serviceUrl+"ServiceUploader.ServiceUploaderHttpsEndpoint/" );
 		clientFactory.setServiceClass( ServiceUploaderPortType.class );
@@ -85,9 +93,9 @@ public class Wso2AarDeployClient {
 			
 			List<AARServiceData> serviceDataList = creRequestData( fin, targetFileName, serviceHierarchy );
 			
-			System.out.println( "Invoking uploadService for "+targetFileName+" ...");
+			listener.getLogger().println("[WSO2 AAR Deployer] Invoking uploadService for "+targetFileName+" ...");
 			String callResult = uploadSvc.uploadService( serviceDataList );
-			System.out.println( "Call result = "+callResult );
+			listener.getLogger().println("[WSO2 AAR Deployer] Call result = "+callResult );
 			
 		} catch (Exception_Exception e) {
 			result = false;
@@ -105,12 +113,16 @@ public class Wso2AarDeployClient {
 	 * @param serviceHierarchy 
 	 * @throws IOException */
 	private List<AARServiceData> creRequestData( InputStream fin, String targetFileName, String serviceHierarchy ) throws IOException {
-        System.out.println( "Create SOAP request containing "+targetFileName+" ...");
+		listener.getLogger().println("[WSO2 AAR Deployer] Create SOAP request containing "+targetFileName+" ...");
         
         AARServiceData req = new AARServiceData();
         ObjectFactory dataFactory = new ObjectFactory();
-        
-        byte[] fileContent = readAARfile( fin );
+
+        final byte fileContent[] = readFully(fin);
+        final int cnt = fileContent.length;
+        listener.getLogger().println( "[WSO2 CAR Deployer] Read CAR with "+cnt+" bytes" );
+
+//        byte[] fileContent = readAARfile( fin );
 
         req.setDataHandler(  dataFactory.createAARServiceDataDataHandler( fileContent )  );
 		req.setFileName( dataFactory.createAARServiceDataFileName( targetFileName  ) );
@@ -122,17 +134,25 @@ public class Wso2AarDeployClient {
 		return serviceDataList;
 	}
 
-	
-	/** helper to read aar into byte array */
-	private byte[] readAARfile( InputStream fin ) throws IOException {
-		System.out.println( "Prepare data ...");
-		byte fileContent[] = new byte[ (int) fin.available() ];
-	    int cnt = fin.read( fileContent );
-        System.out.println( "Read "+cnt+" bytes" );
-        fin.close();
-        
-        return fileContent;
-	}
-	
+	   /**
+     * Read all data available in this input stream and return it as byte[].
+     * Take care for memory on large files!
+     * <p>
+     * Imported from org.jcoderz.commons.util.IoUtil</p>
+     *
+     * @param is the input stream to read from (will not be closed).
+     * @return a byte array containing all data read from the is.
+     */
+    private byte[] readFully(InputStream is) throws IOException {
+        final byte[] buffer = new byte[READ_BUFFER_SIZE];
+        int read = 0;
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        while ((read = is.read(buffer)) >= 0) {
+            out.write(buffer, 0, read);
+        }
+
+        return out.toByteArray();
+    }
 	
 }

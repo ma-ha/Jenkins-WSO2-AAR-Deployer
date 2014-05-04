@@ -119,11 +119,11 @@ public class Wso2AarPublisher extends Recorder {
 		} else {
 			for ( FilePath aarFile : aarList ) {
 				listener.getLogger().println( "[WSO2 Deployer] AAR is   = "+ aarFile.toURI() );
-				listener.getLogger().println( "[WSO2 Deployer] AAR size = "+ aarFile.read().available()  );
+				listener.getLogger().println( "[WSO2 Deployer] AAR size = "+ aarFile.length() );
 
 				InputStream fileIs = aarFile.read();
 
-				Wso2AarDeployClient deployer = new Wso2AarDeployClient( wso2URL, wso2AdminUser, wso2AdminPwd );
+				Wso2AarDeployClient deployer = new Wso2AarDeployClient( wso2URL, wso2AdminUser, wso2AdminPwd, listener );
 				deployer.uploadAAR( fileIs, aarTargetFileName, serviceHierarchy );
 			}
 		}
