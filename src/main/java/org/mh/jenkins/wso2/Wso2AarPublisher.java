@@ -35,6 +35,10 @@ import org.kohsuke.stapler.StaplerRequest;
  */
 public class Wso2AarPublisher extends Recorder {
 
+	// job environment
+	EnvVars env;
+
+	// job params
 	public  String aarSource;
 	public  String aarTargetFileName;
 	public  String wso2URL;
@@ -64,114 +68,88 @@ public class Wso2AarPublisher extends Recorder {
 	public BuildStepMonitor getRequiredMonitorService() {
 		return BuildStepMonitor.NONE;
 	}
-
+	
 	// --------------------------------------------------------------------------------------------
-
+	
 	/** Check input params and tart the deployment */
 	@SuppressWarnings("rawtypes")
 	@Override
 	public boolean perform( AbstractBuild build, Launcher launcher, BuildListener listener ) throws InterruptedException, IOException {
-		EnvVars env = build.getEnvironment( listener ); 	
-		String xAarSource = aarSource;
-		String xAarTargetFileName = aarTargetFileName;
-		String xWso2URL = wso2URL;
-		String xWso2AdminUser = wso2AdminUser;
-		String xWso2AdminPwd = wso2AdminPwd;
+		env = build.getEnvironment( listener ); 	
+		
+		// deployment only, if build is successfully 
 		if ( build.getResult().isWorseOrEqualTo( Result.FAILURE) ) {
 			listener.getLogger().println( "[WSO2 Deployer] WSO2 AS AAR upload: STOP, due to worse build result!" );
 			return true; // nothing to do
 		}
 		listener.getLogger().println( "[WSO2 Deployer] WSO2 AS AAR upload initiated (baseDir="+build.getArtifactsDir().getPath()+")" );
 
-		if ( StringUtils.isBlank( xAarTargetFileName ) ) {
-			listener.error( "[WSO2 Deployer] AAR file name must be set!" ); 
-			return false;
-		} else {
-			if ( xAarTargetFileName.startsWith( "$" ) ) {
-				String envVar = xAarTargetFileName.substring( 1 );
-				listener.getLogger().println( "[WSO2 Deployer] 'AAR Target File Name' from env var: "+envVar );
-				xAarTargetFileName = env.get( envVar );
-			}
-		}
-		if ( StringUtils.isBlank( xAarSource ) ) {
-			listener.error( "[WSO2 Deployer] AAR source name must be set!" ); 
-			return false;
-		} else {
-			if ( xAarSource.startsWith( "$" ) ) {
-				String envVar = xAarSource.substring( 1 );
-				listener.getLogger().println( "[WSO2 Deployer] 'AAR Source' from env var: "+envVar );
-				xAarSource = env.get( envVar );
-			}
-		}
-		if ( StringUtils.isBlank( xWso2URL ) ) {
-			listener.error( "[WSO2 Deployer] WSO2 server URL must be set!" ); 
-			return false;
-		} else {
-			
-			if ( xWso2URL.startsWith( "$" ) ) {
-				String envVar = xWso2URL.substring( 1 );
-				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Server URL' from env var: "+envVar );
-		        xWso2URL = env.get( envVar );
-			}
+		try {
+			// validate input and get variable values
+			String xAarSource         = checkParam( aarSource, "AAR source", listener );
+			String xAarTargetFileName = checkParam( aarTargetFileName, "AAR target file name", listener );
+			String xWso2URL           = checkParam( wso2URL, "WSO2 Server URL", listener );
+			String xWso2AdminUser     = checkParam( wso2AdminUser, "WSO2 admin user", listener );
+			String xWso2AdminPwd      = checkParam( wso2AdminPwd, "WSO2 admin password", listener );
 			
 			if ( ! xWso2URL.endsWith("/") ) {
 				xWso2URL += "/";
 			}
-
-		}
-		// Validates that the organization token is filled in the project configuration.
-		if ( StringUtils.isBlank( xWso2AdminUser ) ) {
-			listener.error( "[WSO2 Deployer] Admin user name must be set!" ); 
-			return false;
-		} else {
-			if ( xWso2AdminUser.startsWith( "$" ) ) {
-				String envVar = xWso2AdminUser.substring( 1 );
-				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Admin User' from env var: "+envVar );
-				xWso2AdminUser = env.get( envVar );
+		
+			String version = artifactVersion( build, listener );
+	
+			FilePath[] aarList = build.getWorkspace().list( xAarSource );
+			if ( aarList.length == 0 ) {
+				listener.error( "[WSO2 Deployer] No AAR file found for '"+xAarSource+"'" );   
+				return false;
+			} else if ( aarList.length != 1  ) {
+				listener.error( "[WSO2 Deployer] Multiple AAR files found for '"+xAarSource+"'" );   
+				for ( FilePath aarFile : aarList ) {
+					listener.getLogger().println( "AAR is n="+aarFile.toURI() );
+				}
+				return false;
+			} else {
+				for ( FilePath aarFile : aarList ) {
+					listener.getLogger().println( "[WSO2 Deployer] WSO2 URL = "+ xWso2URL );
+					listener.getLogger().println( "[WSO2 Deployer] AAR is   = "+ aarFile.toURI() );
+					listener.getLogger().println( "[WSO2 Deployer] AAR ver  = "+ version );
+					listener.getLogger().println( "[WSO2 Deployer] AAR size = "+ aarFile.length() );
+	
+					InputStream fileIs = aarFile.read();
+	
+					Wso2AarDeployClient deployer = new Wso2AarDeployClient( xWso2URL, xWso2AdminUser, xWso2AdminPwd, listener );
+					deployer.uploadAAR( fileIs, xAarTargetFileName, serviceHierarchy );
+				}
 			}
-		}
-		// Validates that the organization token is filled in the project configuration.
-		if ( StringUtils.isBlank( xWso2AdminPwd ) ) {
-			listener.error( "[WSO2 Deployer] Admin password must be set!" ); 
+			return true;
+
+		} catch ( Exception e ) {
 			return false;
-		} else {
-			if ( xWso2AdminPwd.startsWith( "$" ) ) {
-				String envVar = xWso2AdminPwd.substring( 1 );
-				listener.getLogger().println( "[WSO2 Deployer] 'WSO2 Admin Password' from env var: "+envVar );
-				xWso2AdminPwd = env.get( envVar );
-			}
 		}
 
-		String version = artifactVersion( build, listener );
+	}
 
-		boolean result = true;
-
-		FilePath[] aarList = build.getWorkspace().list( xAarSource );
-		if ( aarList.length == 0 ) {
-			listener.error( "[WSO2 Deployer] No AAR file found for '"+xAarSource+"'" );   
-			return false;
-		} else if ( aarList.length != 1  ) {
-			listener.error( "[WSO2 Deployer] Multiple AAR files found for '"+xAarSource+"'" );   
-			for ( FilePath aarFile : aarList ) {
-				listener.getLogger().println( "AAR is n="+aarFile.toURI() );
-			}
-			return false;
+	// --------------------------------------------------------------------------------------------
+	/** Validate input and get variable values (if set) */
+	private String checkParam( String param, String logName, BuildListener listener ) throws Exception {
+		String result = param;
+		if ( StringUtils.isBlank( param ) ) {
+			listener.error( "[WSO2 Deployer] "+logName+" must be set!" ); 
+			throw new Exception("param is blanc");
 		} else {
-			for ( FilePath aarFile : aarList ) {
-				listener.getLogger().println( "[WSO2 Deployer] WSO2 URL = "+ xWso2URL );
-				listener.getLogger().println( "[WSO2 Deployer] AAR is   = "+ aarFile.toURI() );
-				listener.getLogger().println( "[WSO2 Deployer] AAR ver  = "+ version );
-				listener.getLogger().println( "[WSO2 Deployer] AAR size = "+ aarFile.length() );
-
-				InputStream fileIs = aarFile.read();
-
-				Wso2AarDeployClient deployer = new Wso2AarDeployClient( xWso2URL, xWso2AdminUser, xWso2AdminPwd, listener );
-				deployer.uploadAAR( fileIs, xAarTargetFileName, serviceHierarchy );
+			if ( param.startsWith( "$" ) ) {
+				String envVar = param.substring( 1 );
+				listener.getLogger().println( "[WSO2 Deployer] '"+logName+"' from env var: $"+envVar );
+				result = env.get( envVar );
+				if ( result == null ) {
+					listener.error( "[WSO2 Deployer] $"+envVar+" is null (check parameter names and settings)" ); 
+					throw new Exception("var is null");					
+				}
 			}
 		}
 		return result;
 	}
-
+	
 
 	/** helper to get the version of the artifact from pom definition */
 	@SuppressWarnings("rawtypes")
